@@ -1,44 +1,41 @@
 #include "box.h"
 
 /// <summary>
-/// 构造函数 Box
-/// </summary>
-/// <param name="x"></param>
-/// <param name="y"></param>
-/// <param name="w"></param>
-/// <param name="h"></param>
-/// <param name="v"></param>
-/// <param name="g"></param>
-/// <param name="c"></param>
-/// <returns></returns>
-Box::Box(float x, float y, float w, float h, float v, SDL_Color c)
-{
-    this->x = x;
-    this->y = y;
-    this->w = w;
-    this->h = h;
-    this->velocity = v;
-    this->color = c;
-}
-
-/// <summary>
 /// 更新Box
 /// </summary>
-/// <param name="Pos"></param>
+/// <param name="dt"></param>
 /// <returns></returns>
-void UpdateBox(Box &box, float gravity)
+void Box::UpdateBox(float dt, float gravity)
 {
-    if (box.y + box.h >= (float)Window_Height)
+    // 质量超重的石头 -> 不会移动
+    if (inv_mass == 0)
     {
-        box.y = (float)Window_Height - box.h;
-        box.velocity = 0;
         return;
     }
 
-    // 物理更新 (Update)
-    // 这里是物理引擎（如 Box2D）计算位移的地方
-    box.velocity += gravity * 0.016f; // 简单模拟
-    box.y += box.velocity;
+    // 重力只影响 Y 轴
+    velocity.y += 9.8f * 100.0f * dt; // 这里的 100.0 是像素/米 的比例转换
+
+    // 更新位置
+    position += velocity * dt;
+
+    // 底部碰撞 (Y 轴反弹)
+    if (position.y + size.y >= (float)Window_Height)
+    {
+        position.y = (float)Window_Height - size.y;
+        velocity.y = -velocity.y * restitution;
+
+        // 落地时，水平方向因为摩擦力而减速
+        velocity.x *= (1.0f - friction);
+    }
+
+    // 左右墙壁碰撞 (X 轴反弹)
+    if (position.x <= 0 || position.x + size.x >= (float)Window_Height)
+    {
+        velocity.x = -velocity.x * restitution;
+        // 修正位置防止穿墙
+        position.x = (position.x <= 0) ? 0 : (float)Window_Height - size.x;
+    }
 }
 
 /// <summary>
@@ -46,29 +43,35 @@ void UpdateBox(Box &box, float gravity)
 /// </summary>
 /// <param name="renderer"></param>
 /// <returns></returns>
-void RenderBox(SDL_Renderer *renderer, Box &box)
+void Box::RenderBox(SDL_Renderer *renderer)
 {
-    SDL_FRect rect = {box.x, box.y, box.w, box.h};
-    SDL_SetRenderDrawColor(renderer, box.color.r, box.color.g, box.color.b, 255);
+    SDL_FRect rect = {position.x, position.y, size.x, size.y};
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
     SDL_RenderFillRect(renderer, &rect);
 }
 
 /// <summary>
 /// 创造一个方块
 /// </summary>
+/// <param name="pos"></param>
+/// <param name="size"></param>
+/// <param name="mass"></param>
+/// <param name="color"></param>
 /// <returns>Box</returns>
-Box CreateBox(float x, float y, SDL_Color color)
+Box CreateBox(glm::vec2 pos, glm::vec2 size, float mass, SDL_Color color)
 {
-    /* --- 初始化Box数据 --- */
-    float w = 10.f;
-    float h = 10.f;
-    float v = 0.0f;
-    Uint8 color_r = std::rand() % 256;
-    Uint8 color_g = std::rand() % 256;
-    Uint8 color_b = std::rand() % 256;
-    SDL_Color c = color;
+    // 1. 逻辑计算：在这里可以做一些初始化的随机化
+    // 比如：给方块一个随机的初始水平速度，让它看起来更像“喷”出来的
+    float randomVX = (float)(SDL_rand(200) - 100); // -100 到 100 之间
+    glm::vec2 initialVel = glm::vec2(randomVX, 0.0f);
 
-    Box *box = new Box(x, y, w, h, v, c);
+    // 2. 直接构造对象并返回
+    // 注意：inv_mass 等属性可以在 Box 的构造函数内部自动计算
+    Box newBox(pos, size, mass, color);
 
-    return *box;
+    newBox.velocity = initialVel;
+    newBox.restitution = 0.6f; // 给它 60% 的弹性
+    newBox.friction = 0.2f;    // 给点摩擦力
+
+    return newBox;
 }

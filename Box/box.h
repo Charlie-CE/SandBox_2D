@@ -3,7 +3,7 @@
 #include <ctime>
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL.h>
-#include <glm/glm.hpp>
+#include <../glm/glm.hpp>
 #include <SDL3/SDL_render.h>
 #include "../Constant/constant.h"
 
@@ -15,19 +15,35 @@
 class Box
 {
   public:
-    float x;
-    float y;
-    float w;
-    float h;
-    float velocity;
+    // 运动学属性 (Kinematics)
+    glm::vec2 position; // x y 坐标
+    glm::vec2 velocity; // 左右移动和跳跃
+    glm::vec2 size;     // 宽度和高度
+
+    // 动力学属性 (Dynamics)
+    float mass;     // 质量：重的物体撞击力大，且更难被推开
+    float inv_mass; // 质量的倒数 (1/m)：物理引擎优化常用，静止物体质量无穷大，则 inv_mass 为 0
+
+    // 材质属性 (Material Properties)
+    float restitution; // 恢复系数 (弹性)：0 是橡皮泥，1 是完美弹球
+    float friction;    // 摩擦系数：决定在地面滑动时的减速快慢
+
+    // 颜色
     SDL_Color color;
 
   public:
-    Box(float x, float y, float w, float h, float v, SDL_Color c);
+    Box(glm::vec2 pos, glm::vec2 sz, float m, SDL_Color c)
+        : position(pos), size(sz), mass(m), color(c)
+    {
+        velocity = glm::vec2(0.0f, 0.0f);
+        inv_mass = (m > 0.0f) ? 1.0f / m : 0.0f; // 质量为0代表不可移动的固定墙壁
+        restitution = 0.6f;                      // 默认给点弹性
+        friction = 0.2f;                         // 默认点摩擦
+    }
+
+    void UpdateBox(float dt, float gravity);
+
+    void RenderBox(SDL_Renderer *renderer);
 };
 
-void UpdateBox(Box &box, float gravity);
-
-void RenderBox(SDL_Renderer *renderer, Box &box);
-
-Box CreateBox(float x, float y, SDL_Color color);
+Box CreateBox(glm::vec2 pos, glm::vec2 size, float mass, SDL_Color color);

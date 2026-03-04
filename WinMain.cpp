@@ -27,27 +27,23 @@ void MainLoop()
     SDL_Event event;
 
     glm::vec2 mousePos = glm::vec2(0.0f, 0.0f);
+    glm::vec2 boxSize(10.0f, 10.0f);
+
     std::vector<Box> vecBox;
-    SDL_Color *gColor;
+
+    float boxMass = 1.0f;
     float gGravity = 9.8f;
+
+    SDL_Color gColor = {255, 255, 0, 255}; // 黄色
+
+    // 初始化时间
+    Uint32 last_time = SDL_GetTicks();
 
     while (!isQuit)
     {
         // 处理输入 (Input)
         while (SDL_PollEvent(&event))
         {
-            //// 点击一次执行一次
-            // 只有在按下的一瞬间（Down）才执行逻辑
-            // if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
-            // {
-            //     // 检查是不是左键
-            //     if (event.button.button == SDL_BUTTON_LEFT)
-            //     {
-            //         Box b = CreateBox(event.button.x, event.button.y);
-            //         vecBox.push_back(b);
-            //     }
-            // }
-
             switch (event.type)
             {
                 // 退出程序
@@ -70,38 +66,53 @@ void MainLoop()
                 default:
                     break;
                 }
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                // 检查是不是左键
+                if (event.button.button == SDL_BUTTON_LEFT)
+                {
+                    SDL_GetMouseState(&mousePos.x, &mousePos.y);
+                    // 调用工厂函数并存入 vector
+                    vecBox.push_back(CreateBox(mousePos, boxSize, boxMass, gColor));
+                }
+                SDL_Log("vecBox %d", vecBox.size());
+                break;
+            default:
                 break;
             }
         }
 
         //// 点击不放一直执行
-        auto state = SDL_GetMouseState(&mousePos.x, &mousePos.y);
-        if (state & SDL_BUTTON_LMASK)
-        {
-            gColor = new SDL_Color({(uint8_t)(std::rand() % 256), (uint8_t)(std::rand() % 256), (uint8_t)(std::rand() % 256)});
-            Box b = CreateBox(mousePos.x, mousePos.y, *gColor);
-            vecBox.push_back(b);
-        }
+        // auto state = SDL_GetMouseState(&mousePos.x, &mousePos.y);
+        // if (state & SDL_BUTTON_LMASK)
+        // {
+        //     gColor = new SDL_Color({(uint8_t)(std::rand() % 256), (uint8_t)(std::rand() % 256), (uint8_t)(std::rand() % 256)});
+        //     vecBox.push_back(CreateBox(mousePos, boxSize, boxMass, gColor));
+        // }
 
-        SDL_Log("vecBox count : %llu", vecBox.size());
+        // gColor = {(uint8_t)(std::rand() % 256), (uint8_t)(std::rand() % 256), 0, 255};
 
         // 渲染画面 (Render)
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // 背景黑
         SDL_RenderClear(renderer);
 
+        // 獲取當前時間
+        Uint32 current_time = SDL_GetTicks();
+
         for (int i = 0; i < vecBox.size(); i++)
         {
             // 物理更新 (Update)
-            UpdateBox(vecBox[i], gGravity);
+            float dt = (current_time - last_time) / 1000.0f;
+            vecBox[i].UpdateBox(dt, gGravity);
 
             // 绘制沙盒物体
-            RenderBox(renderer, vecBox[i]);
+            vecBox[i].RenderBox(renderer);
         }
 
         SDL_RenderPresent(renderer);
 
         // 控制帧率
         SDL_Delay(16); // 粗略锁定约 60FPS
+        last_time = current_time;
     }
 }
 
