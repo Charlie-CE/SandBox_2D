@@ -1,14 +1,18 @@
 #include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <vector>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_mixer/SDL_mixer.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <glm/glm.hpp>
-#include <vector>
 #include "Box/box.h"
+#include "Constant/constant.h"
+#include "SDL3/SDL_pixels.h"
 
-SDL_Window *window = SDL_CreateWindow("2D 物理沙盒 程序窗口", 1280, 1000, 0);
+SDL_Window *window = SDL_CreateWindow("2D 物理沙盒 程序窗口", Window_Wdith, Window_Height, 0);
 SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
 
 /// <summary>
@@ -24,17 +28,14 @@ void MainLoop()
 
     glm::vec2 mousePos = glm::vec2(0.0f, 0.0f);
     std::vector<Box> vecBox;
+    SDL_Color *gColor;
+    float gGravity = 9.8f;
 
     while (!isQuit)
     {
-        // 1. 处理输入 (Input)
+        // 处理输入 (Input)
         while (SDL_PollEvent(&event))
         {
-            if (event.type == SDL_EVENT_QUIT)
-            {
-                isQuit = true;
-            }
-
             //// 点击一次执行一次
             // 只有在按下的一瞬间（Down）才执行逻辑
             // if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
@@ -46,17 +47,43 @@ void MainLoop()
             //         vecBox.push_back(b);
             //     }
             // }
+
+            switch (event.type)
+            {
+                // 退出程序
+            case SDL_EVENT_QUIT:
+                isQuit = true;
+                break;
+
+            // 键盘按下事件
+            case SDL_EVENT_KEY_DOWN:
+                switch (event.key.key)
+                {
+                case SDLK_C:
+                    vecBox.clear(); // 清空所有方块
+                    SDL_Log("已执行清空 (C Key Pressed)");
+                    break;
+
+                case SDLK_ESCAPE:
+                    isQuit = true; // 按下 ESC 退出程序
+                    break;
+                default:
+                    break;
+                }
+                break;
+            }
         }
 
         //// 点击不放一直执行
         auto state = SDL_GetMouseState(&mousePos.x, &mousePos.y);
         if (state & SDL_BUTTON_LMASK)
         {
-            Box b = CreateBox(mousePos.x, mousePos.y);
+            gColor = new SDL_Color({(uint8_t)(std::rand() % 256), (uint8_t)(std::rand() % 256), (uint8_t)(std::rand() % 256)});
+            Box b = CreateBox(mousePos.x, mousePos.y, *gColor);
             vecBox.push_back(b);
         }
 
-        SDL_Log("vecBox count : %d", vecBox.size());
+        SDL_Log("vecBox count : %llu", vecBox.size());
 
         // 渲染画面 (Render)
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // 背景黑
@@ -65,7 +92,7 @@ void MainLoop()
         for (int i = 0; i < vecBox.size(); i++)
         {
             // 物理更新 (Update)
-            UpdateBox(vecBox[i]);
+            UpdateBox(vecBox[i], gGravity);
 
             // 绘制沙盒物体
             RenderBox(renderer, vecBox[i]);
@@ -85,6 +112,8 @@ void MainLoop()
 /// <returns></returns>
 int main(int argc, char *argv[])
 {
+    std::srand(std::time(NULL));
+
     /* 初始化 SDL */
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {

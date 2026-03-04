@@ -11,14 +11,13 @@
 /// <param name="g"></param>
 /// <param name="c"></param>
 /// <returns></returns>
-Box::Box(float x, float y, float w, float h, float v, float g, SDL_Color c)
+Box::Box(float x, float y, float w, float h, float v, SDL_Color c)
 {
     this->x = x;
     this->y = y;
     this->w = w;
     this->h = h;
     this->velocity = v;
-    this->gravity = g;
     this->color = c;
 }
 
@@ -27,11 +26,18 @@ Box::Box(float x, float y, float w, float h, float v, float g, SDL_Color c)
 /// </summary>
 /// <param name="Pos"></param>
 /// <returns></returns>
-void UpdateBox(Box &box)
+void UpdateBox(Box &box, float gravity)
 {
+    if (box.y + box.h >= (float)Window_Height)
+    {
+        box.y = (float)Window_Height - box.h;
+        box.velocity = 0;
+        return;
+    }
+
     // 物理更新 (Update)
     // 这里是物理引擎（如 Box2D）计算位移的地方
-    box.velocity += box.gravity * 0.016f; // 简单模拟
+    box.velocity += gravity * 0.016f; // 简单模拟
     box.y += box.velocity;
 }
 
@@ -51,21 +57,18 @@ void RenderBox(SDL_Renderer *renderer, Box &box)
 /// 创造一个方块
 /// </summary>
 /// <returns>Box</returns>
-Box CreateBox(float x, float y)
+Box CreateBox(float x, float y, SDL_Color color)
 {
-    std::srand(std::time(NULL));
-
     /* --- 初始化Box数据 --- */
-    float w = 40.f;
-    float h = 40.f;
+    float w = 10.f;
+    float h = 10.f;
     float v = 0.0f;
-    float g = 9.8f;
     Uint8 color_r = std::rand() % 256;
     Uint8 color_g = std::rand() % 256;
     Uint8 color_b = std::rand() % 256;
-    SDL_Color *c = new SDL_Color({color_r, color_g, color_b});
+    SDL_Color c = color;
 
-    Box *box = new Box(x, y, w, h, v, g, *c);
+    Box *box = new Box(x, y, w, h, v, c);
 
     return *box;
 }
